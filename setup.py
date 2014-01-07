@@ -5,11 +5,12 @@ from distutils.core import setup
 setup(
     name='hamtools',
     version='0.1',
-    description='N1YWB Python Ham Tools',
+    description='N1YWB Python Ham Radio Tools',
     author='Jeff Laughlin',
     author_email='n1ywb@arrl.net',
     url='https://github.com/n1ywb/python-hamtools',
-    py_modules = ['hamtools'],
+    packages = ['hamtools'],
+    package_data={'hamtools': ['ctydat/cty.dat']},
     scripts = ['geolog', 'vk'],
     install_requires = ['geojson'],
     long_description = (

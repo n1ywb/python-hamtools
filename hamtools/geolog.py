@@ -23,6 +23,8 @@ import os
 import sys
 import traceback
 
+from pkg_resources import resource_stream
+
 import geojson as gj
 
 import adif
@@ -165,7 +167,7 @@ class Log(object):
             folder.appendChild(callnode)
         dom.writepretty(file)
 
-def geolog(logfilepath, outfile, username, password, cachepath):
+def geolog(logfilepath, outfile, username, password, cachepath, ctydatflo):
     with open(logfilepath) as logfile:
         line = logfile.next()
 
@@ -177,10 +179,9 @@ def geolog(logfilepath, outfile, username, password, cachepath):
             log.info("Opened ADIF format log %r" % logfile)
             qsolog = Log.from_adif(logfile)
 
-    with open('/home/jeff/Downloads/ctydat/cty.dat') as ctydat:
-        ctydat = CtyDat(ctydat)
-        with qrz.Session(username, password, cachepath) as sess:
-            qsolog.georeference(sess, ctydat)
+    ctydat = CtyDat(ctydatflo)
+    with qrz.Session(username, password, cachepath) as sess:
+        qsolog.georeference(sess, ctydat)
 
     points, lines = qsolog.geojson_dumps(sort_keys=True)
 
@@ -238,11 +239,23 @@ created: "foo/bar_points.geojson", "foo/bar_lines.geojson", and "foo/bar.kml"
     except ConfigParser.Error:
         cachepath = CACHEPATH
 
+    try:
+        cachepath = cfg.get('qrz', 'cachepath')
+    except ConfigParser.Error:
+        cachepath = CACHEPATH
+
+    try:
+        ctydatpath = cfg.get('geolog', 'cachepath')
+        ctydatflo = open(ctydatpath)
+    except ConfigParser.Error:
+        ctydatflo = resource_stream(__name__, "ctydat/cty.dat")
+
     log.info("QRZ cache: %s" % cachepath)
 
-    geolog(args.infile, args.outpath, un, pw, cachepath)
+    geolog(args.infile, args.outpath, un, pw, cachepath, ctydatflo)
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

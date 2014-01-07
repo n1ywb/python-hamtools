@@ -1,5 +1,8 @@
 # N1YWB Python Ham Radio Tools #
 
+Copyright 2014 by Jeffrey M. Laughlin
+Copyright 2006 by Herrmann Hofer
+
 This package includes several Python modules and scripts of interest to the
 radio amateur.
 
@@ -38,6 +41,11 @@ location explicity with the `-c` command line option. See the included
 `geologrc_example` file. You may also use the config file to override the
 default QRZ cache file location.
 
+hamtools comes with a recent copy of the big cty.dat. If you wish to install a newer version, download from http://www.country-files.com/contest/ and in .geologrc specify
+
+[geolog]
+ctydatpath=path/to/cty.dat
+
 ## hamtools.adif ##
 
 The adif module implements a subset of the ADIF standard for reading and
@@ -64,4 +72,9 @@ Simple KML generation based on minidom.
 
 A very trivial voice keyer script which plays an audio file while
 simultaniously keying a radio via the serial port. Requires pyserial.
+
+# License #
+
+kml.py is released under the LGPL v3
+All other files are released under the AGPL v3
 

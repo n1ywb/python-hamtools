@@ -1,0 +1,57 @@
+Big CTY - 29 December 2013
+
+Version entity is Sweden, SM
+
+Added/changed Callsigns/prefixes:
+
+	* A91ACC/GR is Bahrain, A9
+	* CE9/UA4WHX is Chile, CE in ITU zone 16
+	* IA/IZ3SUS is Antarctica, CE9 in CQ zone 29, ITU zone 70
+	* EA7URA/YOTA is Spain, EA
+	* EA5RKB/6 is Balearic Islands, EA6
+	* TO6D is Guadeloupe, FG
+	* TX6G is Austral Islands, FO/a
+	* 2Z, G0FBJ, GB0BL, GB2CAS, GB2ELH, GB2ELH/LH, GB2IGS, GB2LHI, GB2QM,
+	  GB2SB, GB2SLH, GB2SR, GB2WG, GB2ZET, GB3LER, GB3LER/B, GB4LER, GB4SI, GM0DHZ/P,
+	  GM0GFL/P, GM0SGB/P, GM3TXF/P, GM3USR/P, GM3VLB/P, GM4AFF/P, GM4CHX/P, GS4WAB/P,
+	  GZ, MM/F5BLC/P, MM/OK1FZM/P, MM/W5ZE/P, MM0LON/M, MM5PSL/P, MM5YLO/P, MO5PSL,
+	  MQ5PSL, MR5PSL and MZ are all Scotland, GM
+	* II1RT/N, IZ0DBA/N and IZ1POA/N are all Italy, I
+	* AB2QH is Mariana Islands, KH0
+	* KC6HOX, KC7ASJ, KD0MSD, KD0QLR, KD0WVZ, KE6AXN, KF7TUU, KG6TFI, KJ6QQT,
+	  KJ6SKC, KL1TP, N0CAN, N7TSV, N7WBX and W7NX are all Hawaii, KH6
+	* AF5S, KB7VFZ, KB7ZVZ, KB8SBG, KE6SYD, KF7LUA, KH2YN, KJ4ZWI, N8ZPO,
+	  NA7WM, W6TN and WH6CYY are all Alaska, KL
+	* WI7C is US Virgin Islands, KP2
+	* AF4OU, KB3BPK, KE0SH, KE1MA and KX5DX are all Puerto Rico, KP4
+	* LU5XP/D and LU6FEC/T are both Argentina, LU
+	* OH1FJ/SA, OH1KW/S, OH1LEO/S, OH1SJ/SA, OH2BNX/SA, OH2EO/S, OH2ET/S,
+	  OH2MEE/SA, OH2MO/SA, OH2NAS/SA, OH2PO/SA, OH2S/S, OH2XL/S, OH2ZL/SA, OH3FJQ/S,
+	  OH3HB/SA, OH3IH/SA, OH3LS/S, OH4FSL/SA, OH5A/S, OH5EAB/S, OH5EAB/SA, OH6QR/SA,
+	  OH7ND/S, OH9AR/S, OH9TM/S, OH9TO/S, OI4JM/SA and OI6SP/SA are all Finland, OH
+	* R95DOD, R95NRL, RA22, RW2F/6, UA0QGM/3, UA9KHD/3 and UE22A are all European Russia, UA
+	* RA22KO, RA22XA, RA22XF, RN22OG and RN22OV are all European Russia, UA in CQ zone 17, ITU zone 19
+	* RV22PM is European Russia, UA in CQ zone 17, ITU zone 30
+	* RD22FU and RJ22DX are both Kaliningrad, UA2
+	* R22BIA, R22SKE, R22SKJ, RA22MX, RA22QF, RT22MC, RT22MD, RU22AZ, RU22CR,
+	  RU22LR, RW22MW, RW22QA, RW22QC, RY22MC and RY22RZ are all Asiatic Russia, UA9
+	* RT22TK, RT22WF, RU22WZ, RV22WB and RX22WN are all Asiatic Russia, UA9 in CQ zone 16
+	* R9/UN7JMO, RT22UA and RZ22WW are all Asiatic Russia, UA9 in CQ zone 18, ITU zone 31
+	* RN110RAEM/P and RT22SA are both Asiatic Russia, UA9 in CQ zone 18, ITU zone 32
+	* RW22WR and UA9KW/0 are both Asiatic Russia, UA9 in CQ zone 19, ITU zone 23
+	* RT22CT is Asiatic Russia, UA9 in CQ zone 19, ITU zone 33
+	* RW22GO is Asiatic Russia, UA9 in CQ zone 19, ITU zone 34
+	* RT22ZS is Asiatic Russia, UA9 in CQ zone 19, ITU zone 35
+	* UU4JO/LH is Ukraine, UR
+	* RI20ANT and RI44ANT are both South Shetland Islands, VP8/h
+
+Retired Callsigns/prefixes:
+
+	* RI1ANT in Antarctica, CE9
+	* 2T in Isle of Man, GD
+	* 2N in Northern Ireland, GI
+	* 2H in Jersey, GJ
+	* 2P in Guernsey, GU
+	* 2Y in Wales, GW
+	* KC7RXR and KP4X in Alaska, KL
+	* KD0ETC/LH in Canada, VE

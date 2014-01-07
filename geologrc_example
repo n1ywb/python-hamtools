@@ -1,3 +1,6 @@
+[geolog]
+ctydatpath=path/to/cty.dat
+
 [qrz]
 username=myusername
 password=mypassword
