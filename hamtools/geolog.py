@@ -43,6 +43,8 @@ CABRILLO_FIELDS = ['header', 'freq', 'mode', 'date', 'time',
 
 CACHEPATH = os.path.join(os.environ['HOME'], '.qrz_cache')
 
+class NullLoc(Exception): pass
+
 class Log(object):
     def __init__(self):
         self.qsos = []
@@ -67,9 +69,16 @@ class Log(object):
     def georeference(self, sess, ctydat):
         try:
             rec = sess.qrz(self.callsign)
-            assert None not in (rec['lat'], rec['lon'])
+            if None in (rec['lat'], rec['lon']):
+                raise NullLoc()
             self.lat, self.lon = rec['lat'], rec['lon']
             log.debug("qrz rec %s" % rec)
+        except NullLoc:
+            log.warning("QRZ lookup failed for %s, no location data" % self.callsign)
+            raise
+        except qrz.NotFound, e:
+            log.warning("QRZ lookup failed for %s, not found" % self.callsign)
+            raise
         except Exception, e:
             log.warning("QRZ lookup failed for %s" % self.callsign, exc_info=True)
             raise
@@ -82,10 +91,16 @@ class Log(object):
                 if rec['call'] != qso['to_call']:
                     log.warning("qrz %s != %s" % (rec['call'],
                                     qso['to_call']))
-                assert None not in (rec['lat'], rec['lon'])
+                if None in (rec['lat'], rec['lon']):
+                    raise NullLoc()
                 qso['lat'], qso['lon'] = rec['lat'], rec['lon']
             except Exception, e:
-                log.warning("QRZ lookup failed for %s" % qso['to_call'], exc_info=True)
+                if isinstance(e, qrz.NotFound):
+                    log.warning("QRZ lookup failed for %s, not found" % qso['to_call'])
+                elif isinstance(e, NullLoc):
+                    log.warning("QRZ lookup failed for %s, no location data" % qso['to_call'])
+                else:
+                    log.warning("QRZ lookup failed for %s" % qso['to_call'], exc_info=True)
                 try:
                     dxcc = ctydat.getdxcc(qso['to_call'])
                     qso['lat'] = float(dxcc['lat'])
@@ -116,14 +131,14 @@ class Log(object):
         )
 
 
-def geolog(logfile, outfile, username, password):
+def geolog(logfile, outfile, username, password, cachepath):
     with open(logfile) as logfile:
         log.info("Opened %r" % logfile)
         qsolog = Log.from_cabrillo(logfile)
 
     with open('/home/jeff/Downloads/ctydat/cty.dat') as ctydat:
         ctydat = CtyDat(ctydat)
-        with qrz.Session(username, password) as sess:
+        with qrz.Session(username, password, cachepath) as sess:
             qsolog.georeference(sess, ctydat)
 
     points, lines = qsolog.geojson_dumps(sort_keys=True)
@@ -145,9 +160,9 @@ def main(argv=None):
 
     parser = argparse.ArgumentParser(
         description=
-"""Read ham log and output GIS data for callsigns worked.
-
-Output files will be prefixed with output path.
+"""Read ham log and output GIS data for callsigns worked. Output files will be
+prefixed with output path. E.g. given "foo/bar", the following files will be
+created: "foo/bar_points.geojson", "foo/bar_lines.geojson", and "foo/bar.kml"
 """)
     parser.add_argument('infile', type=str,
         help='Input log file (ADIF or Cabrillo)')
@@ -169,7 +184,7 @@ Output files will be prefixed with output path.
         un = raw_input("QRZ.com user name:")
 
     try:
-        un = cfg.get('qrz', 'password')
+        pw = cfg.get('qrz', 'password')
     except ConfigParser.Error:
         pw = raw_input("QRZ.com password (not stored):")
 
@@ -178,7 +193,9 @@ Output files will be prefixed with output path.
     except ConfigParser.Error:
         cachepath = CACHEPATH
 
-    geolog(args.infile, args.outfile, un, pw, cachepath)
+    log.info("QRZ cache: %s" % cachepath)
+
+    geolog(args.infile, args.outpath, un, pw, cachepath)
 
     return 0
 

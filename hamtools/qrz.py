@@ -70,6 +70,7 @@ class Session(object):
         self.checkErr(session)
         self.key = session.getElementsByTagName("Key")[0].firstChild.data
         self.db = sqlite3.connect(cachepath)
+        self.db.text_factory = str
         try:
             self.db.execute("""
                 create table dict (
