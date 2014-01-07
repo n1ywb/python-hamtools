@@ -1,0 +1,4 @@
+[qrz]
+username=myusername
+password=mypassword
+cachepath=path/to/cachefile
