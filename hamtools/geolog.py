@@ -1,0 +1,187 @@
+#!/usr/bin/env python
+#
+# Copyright 2009, 2012, 2014 by Jeffrey M. Laughlin
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+import argparse
+import ConfigParser
+import sys
+import traceback
+import os
+
+import qrz
+import logging
+
+import geojson as gj
+
+from ctydat import CtyDat, InvalidDxcc
+
+log = logging.getLogger('geolog')
+#log.setLevel(logging.INFO)
+
+# 1. Load log
+# 2. Georeference log
+# 3. Cache georeferenced calls
+# 4. Output GeoJSON
+
+CABRILLO_FIELDS = ['header', 'freq', 'mode', 'date', 'time',
+    'from_call', 'sent_qst', 'sent_ex', 'to_call', 'receved_qst',
+    'received_ex']
+
+CACHEPATH = os.path.join(os.environ['HOME'], '.qrz_cache')
+
+class Log(object):
+    def __init__(self):
+        self.qsos = []
+        self.callsign = None
+
+    @staticmethod
+    def from_cabrillo(logfile):
+        self = Log()
+        for line in logfile:
+            if line.startswith("QSO"):
+                qso = dict(zip(CABRILLO_FIELDS, line.split()))
+                qso['time'] = float(qso['time'] + '.000000001')
+                qso['freq'] = float(qso['freq'] + '.000000001')
+                self.qsos.append(qso)
+                log.debug(qso)
+            elif line.startswith("CALLSIGN:"):
+                self.callsign = line.split()[1]
+                log.info("Callsign: %s" % self.callsign)
+        log.info("Read %d records" % len(self.qsos))
+        return self
+
+    def georeference(self, sess, ctydat):
+        try:
+            rec = sess.qrz(self.callsign)
+            assert None not in (rec['lat'], rec['lon'])
+            self.lat, self.lon = rec['lat'], rec['lon']
+            log.debug("qrz rec %s" % rec)
+        except Exception, e:
+            log.warning("QRZ lookup failed for %s" % self.callsign, exc_info=True)
+            raise
+
+        for qso in self.qsos:
+            qso['lat'], qso['lon'] = None, None
+            try:
+                rec = sess.qrz(qso['to_call'])
+                log.debug("qrz rec %s" % rec)
+                if rec['call'] != qso['to_call']:
+                    log.warning("qrz %s != %s" % (rec['call'],
+                                    qso['to_call']))
+                assert None not in (rec['lat'], rec['lon'])
+                qso['lat'], qso['lon'] = rec['lat'], rec['lon']
+            except Exception, e:
+                log.warning("QRZ lookup failed for %s" % qso['to_call'], exc_info=True)
+                try:
+                    dxcc = ctydat.getdxcc(qso['to_call'])
+                    qso['lat'] = float(dxcc['lat'])
+                    qso['lon'] = float(dxcc['lon']) * -1
+                except Exception:
+                    log.warning("cty.dat lookup failed for %s" % qso['to_call'], exc_info=True)
+                    raise
+
+    def geojson_dumps(self, *args, **kwargs):
+        points = []
+        lines = []
+        for qso in self.qsos:
+            if None in (qso['lat'], qso['lon']):
+                log.warning("No coords %s" % qso)
+                continue
+            point = gj.Point((qso['lon'], qso['lat']))
+            points.append(gj.Feature(geometry=point,
+                                 properties=qso))
+            line = gj.LineString([
+                        (self.lon, self.lat),
+                        (qso['lon'], qso['lat'])
+            ])
+            lines.append(gj.Feature(geometry=line,
+                                 properties=qso))
+        return (
+            gj.dumps(gj.FeatureCollection(points), *args, **kwargs),
+            gj.dumps(gj.FeatureCollection(lines), *args, **kwargs),
+        )
+
+
+def geolog(logfile, outfile, username, password):
+    with open(logfile) as logfile:
+        log.info("Opened %r" % logfile)
+        qsolog = Log.from_cabrillo(logfile)
+
+    with open('/home/jeff/Downloads/ctydat/cty.dat') as ctydat:
+        ctydat = CtyDat(ctydat)
+        with qrz.Session(username, password) as sess:
+            qsolog.georeference(sess, ctydat)
+
+    points, lines = qsolog.geojson_dumps(sort_keys=True)
+
+    pointfile = '_'.join((outfile, 'points.geojson'))
+    with open(pointfile, "w") as pointfile:
+        pointfile.write(points)
+
+    linefile = '_'.join((outfile, 'lines.geojson'))
+    with open(linefile, "w") as linefile:
+        linefile.write(lines)
+
+
+def main(argv=None):
+    if argv is None:
+        argv = sys.argv
+
+    logging.basicConfig(level=logging.INFO)
+
+    parser = argparse.ArgumentParser(
+        description=
+"""Read ham log and output GIS data for callsigns worked.
+
+Output files will be prefixed with output path.
+""")
+    parser.add_argument('infile', type=str,
+        help='Input log file (ADIF or Cabrillo)')
+    parser.add_argument('outpath', type=str,
+        help='Output path prefix')
+    parser.add_argument('-c', '--cfg', type=str,
+        help='Config file path', default=os.path.join(os.environ['HOME'], '.geologrc'))
+    parser.add_argument('-v', '--verbose', type=bool,
+        help='Turn on additional output', default=False)
+    args = parser.parse_args(argv[1:])
+
+    cfg = ConfigParser.SafeConfigParser()
+
+    cfg.read(args.cfg)
+
+    try:
+        un = cfg.get('qrz', 'username')
+    except ConfigParser.Error:
+        un = raw_input("QRZ.com user name:")
+
+    try:
+        un = cfg.get('qrz', 'password')
+    except ConfigParser.Error:
+        pw = raw_input("QRZ.com password (not stored):")
+
+    try:
+        cachepath = cfg.get('qrz', 'cachepath')
+    except ConfigParser.Error:
+        cachepath = CACHEPATH
+
+    geolog(args.infile, args.outfile, un, pw, cachepath)
+
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
+
