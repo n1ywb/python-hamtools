@@ -25,6 +25,7 @@ import traceback
 
 import geojson as gj
 
+import adif
 from ctydat import CtyDat, InvalidDxcc
 import kml
 import qrz
@@ -38,7 +39,7 @@ log = logging.getLogger('geolog')
 # 4. Output GeoJSON
 
 CABRILLO_FIELDS = ['header', 'freq', 'mode', 'date', 'time',
-    'from_call', 'sent_qst', 'sent_ex', 'to_call', 'receved_qst',
+    'from_call', 'sent_rst', 'sent_ex', 'call', 'receved_rst',
     'received_ex']
 
 CACHEPATH = os.path.join(os.environ['HOME'], '.qrz_cache')
@@ -56,6 +57,9 @@ class Log(object):
         for line in logfile:
             if line.startswith("QSO"):
                 qso = dict(zip(CABRILLO_FIELDS, line.split()))
+                # Pygeojson just repr's numbers, which doesn't add .0 to
+                # floats, which makes them JSON ints, which QGIS won't allow to
+                # use for a graduated scale.
                 qso['time'] = float(qso['time'] + '.000000001')
                 qso['freq'] = float(qso['freq'] + '.000000001')
                 self.qsos.append(qso)
@@ -64,6 +68,19 @@ class Log(object):
                 self.callsign = line.split()[1]
                 log.info("Callsign: %s" % self.callsign)
         log.info("Read %d records" % len(self.qsos))
+        return self
+
+    @staticmethod
+    def from_adif(logfile):
+        self = Log()
+        log = adif.Reader(logfile)
+        for qso in log:
+            try: del qso['app_datetime_on']
+            except KeyError: pass
+            try: del qso['app_datetime_off']
+            except KeyError: pass
+            self.qsos.append(qso)
+        self.callsign = qso['operator']
         return self
 
     def georeference(self, sess, ctydat):
@@ -86,27 +103,27 @@ class Log(object):
         for qso in self.qsos:
             qso['lat'], qso['lon'] = None, None
             try:
-                rec = sess.qrz(qso['to_call'])
+                rec = sess.qrz(qso['call'])
                 log.debug("qrz rec %s" % rec)
-                if rec['call'] != qso['to_call']:
+                if rec['call'] != qso['call']:
                     log.warning("qrz %s != %s" % (rec['call'],
-                                    qso['to_call']))
+                                    qso['call']))
                 if None in (rec['lat'], rec['lon']):
                     raise NullLoc()
                 qso['lat'], qso['lon'] = rec['lat'], rec['lon']
             except Exception, e:
                 if isinstance(e, qrz.NotFound):
-                    log.warning("QRZ lookup failed for %s, not found" % qso['to_call'])
+                    log.warning("QRZ lookup failed for %s, not found" % qso['call'])
                 elif isinstance(e, NullLoc):
-                    log.warning("QRZ lookup failed for %s, no location data" % qso['to_call'])
+                    log.warning("QRZ lookup failed for %s, no location data" % qso['call'])
                 else:
-                    log.warning("QRZ lookup failed for %s" % qso['to_call'], exc_info=True)
+                    log.warning("QRZ lookup failed for %s" % qso['call'], exc_info=True)
                 try:
-                    dxcc = ctydat.getdxcc(qso['to_call'])
+                    dxcc = ctydat.getdxcc(qso['call'])
                     qso['lat'] = float(dxcc['lat'])
                     qso['lon'] = float(dxcc['lon']) * -1
                 except Exception:
-                    log.warning("cty.dat lookup failed for %s" % qso['to_call'], exc_info=True)
+                    log.warning("cty.dat lookup failed for %s" % qso['call'], exc_info=True)
                     raise
 
     def geojson_dumps(self, *args, **kwargs):
@@ -136,9 +153,9 @@ class Log(object):
         callnode = dom.createPlacemark(self.callsign, self.lat, self.lon)
         folder.appendChild(callnode)
         for qso in self.qsos:
-            to_call, lat, lon = qso['to_call'], qso["lat"], qso["lon"]
-            callnode = dom.createPlacemark(to_call, lat, lon)
-            callnode2 = dom.createPlacemark(to_call, lat, lon)
+            call, lat, lon = qso['call'], qso["lat"], qso["lon"]
+            callnode = dom.createPlacemark(call, lat, lon)
+            callnode2 = dom.createPlacemark(call, lat, lon)
             theline = dom.createLineString(
                 ((lat, lon, 0), (self.lat, self.lon, 0)),
                 tessel=True)
@@ -148,10 +165,17 @@ class Log(object):
             folder.appendChild(callnode)
         dom.writepretty(file)
 
-def geolog(logfile, outfile, username, password, cachepath):
-    with open(logfile) as logfile:
-        log.info("Opened %r" % logfile)
-        qsolog = Log.from_cabrillo(logfile)
+def geolog(logfilepath, outfile, username, password, cachepath):
+    with open(logfilepath) as logfile:
+        line = logfile.next()
+
+    with open(logfilepath) as logfile:
+        if line.startswith('START-OF-LOG'):
+            log.info("Opened Cabrillo format log %r" % logfile)
+            qsolog = Log.from_cabrillo(logfile)
+        else:
+            log.info("Opened ADIF format log %r" % logfile)
+            qsolog = Log.from_adif(logfile)
 
     with open('/home/jeff/Downloads/ctydat/cty.dat') as ctydat:
         ctydat = CtyDat(ctydat)

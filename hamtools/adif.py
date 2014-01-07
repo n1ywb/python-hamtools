@@ -149,13 +149,13 @@ class Reader(object):
                                           int(rec['qso_date'][4:6]),
                                           int(rec['qso_date'][6:8]),
                                           int(rec['time_on'][:2]),
-                                          int(rec['time_on'][2:]))
+                                          int(rec['time_on'][2:4]))
                 if 'qso_date' in rec and 'time_off' in rec:
                     rec['app_datetime_off'] = datetime(int(rec['qso_date'][:4]),
                                           int(rec['qso_date'][4:6]),
                                           int(rec['qso_date'][6:8]),
                                           int(rec['time_off'][:2]),
-                                          int(rec['time_off'][2:]))
+                                          int(rec['time_off'][2:4]))
                 yield rec
                 rec = OrderedDict()
             else:
