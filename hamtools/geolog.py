@@ -18,16 +18,16 @@
 
 import argparse
 import ConfigParser
+import logging
+import os
 import sys
 import traceback
-import os
-
-import qrz
-import logging
 
 import geojson as gj
 
 from ctydat import CtyDat, InvalidDxcc
+import kml
+import qrz
 
 log = logging.getLogger('geolog')
 #log.setLevel(logging.INFO)
@@ -113,9 +113,6 @@ class Log(object):
         points = []
         lines = []
         for qso in self.qsos:
-            if None in (qso['lat'], qso['lon']):
-                log.warning("No coords %s" % qso)
-                continue
             point = gj.Point((qso['lon'], qso['lat']))
             points.append(gj.Feature(geometry=point,
                                  properties=qso))
@@ -130,6 +127,26 @@ class Log(object):
             gj.dumps(gj.FeatureCollection(lines), *args, **kwargs),
         )
 
+    def write_kml(self, file):
+        dom = kml.KML()
+        doc = dom.createDocument(self.callsign + " log")
+        folder = dom.createFolder(self.callsign + " log")
+        doc.appendChild(folder)
+        dom.root.appendChild(doc)
+        callnode = dom.createPlacemark(self.callsign, self.lat, self.lon)
+        folder.appendChild(callnode)
+        for qso in self.qsos:
+            to_call, lat, lon = qso['to_call'], qso["lat"], qso["lon"]
+            callnode = dom.createPlacemark(to_call, lat, lon)
+            callnode2 = dom.createPlacemark(to_call, lat, lon)
+            theline = dom.createLineString(
+                ((lat, lon, 0), (self.lat, self.lon, 0)),
+                tessel=True)
+            folder.appendChild(callnode2)
+            callnode.appendChild(theline)
+            callnode.removeChild(callnode.childNodes[1])
+            folder.appendChild(callnode)
+        dom.writepretty(file)
 
 def geolog(logfile, outfile, username, password, cachepath):
     with open(logfile) as logfile:
@@ -150,6 +167,10 @@ def geolog(logfile, outfile, username, password, cachepath):
     linefile = '_'.join((outfile, 'lines.geojson'))
     with open(linefile, "w") as linefile:
         linefile.write(lines)
+
+    kmlfile = ''.join((outfile, '.kml'))
+    with open(kmlfile, "w") as kmlfile:
+        qsolog.write_kml(kmlfile)
 
 
 def main(argv=None):
