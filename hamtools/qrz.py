@@ -40,6 +40,9 @@ testSessionXML = """\
 class NotFound(Exception):
     pass
 
+class CallMismatch(Exception):
+    pass
+
 class Callsign(object):
     conversions = dict(
         lat=float,
@@ -141,7 +144,7 @@ class Session(object):
             callnode = dom.getElementsByTagName("Callsign")[0]
             data = Callsign(callnode)
             if data['call'].lower() != callsign.lower():
-                raise Exception("qrz callsign mismatch")
+                raise CallMismatch("Calls do not match", data['call'], callsign)
             return data
         except Exception:
             log.debug(xml)

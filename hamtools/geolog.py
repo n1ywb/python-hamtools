@@ -28,7 +28,7 @@ from pkg_resources import resource_stream
 import geojson as gj
 
 import adif
-from ctydat import CtyDat, InvalidDxcc
+from ctydat import CtyDat, InvalidDxcc, InvalidCallsign
 import kml
 import qrz
 
@@ -46,7 +46,51 @@ CABRILLO_FIELDS = ['header', 'freq', 'mode', 'date', 'time',
 
 CACHEPATH = os.path.join(os.environ['HOME'], '.qrz_cache')
 
-class NullLoc(Exception): pass
+
+class OperatorGeoRefFail(Exception): pass
+
+class GeoRefFail(Exception): pass
+
+class GeoRefError(Exception): pass
+class NullLoc(GeoRefError): pass
+class NotFound(GeoRefError): pass
+
+
+class QrzReferencer(object):
+    def __init__(self, session):
+        self.session = session
+
+    def reference(self, callsign):
+        """Returns lon, lat from QRZ"""
+        try:
+            rec = self.session.qrz(callsign)
+            if None in (rec['lat'], rec['lon']):
+                raise NullLoc(callsign)
+            lat, lon = rec['lat'], rec['lon']
+            log.debug("qrz rec %s" % rec)
+        except qrz.NotFound, e:
+            raise NotFound(callsign)
+        except qrz.CallMismatch, e:
+            raise GeoRefError(*e.args)
+        return lon, lat
+
+
+class CtyDatReferencer(object):
+    def __init__(self, ctydat):
+        self.ctydat = ctydat
+
+    def reference(self, callsign):
+        """Returns lon, lat from ctydat"""
+        try:
+            dxcc = self.ctydat.getdxcc(callsign)
+        except (InvalidDxcc, InvalidCallsign):
+            raise GeoRefError()
+        lat = float(dxcc['lat'])
+        lon = float(dxcc['lon']) * -1
+        return lon, lat
+
+
+
 
 class Log(object):
     def __init__(self):
@@ -86,47 +130,33 @@ class Log(object):
         self.callsign = qso['operator']
         return self
 
+    def _georef(self, callsign):
+        for d in self.drivers:
+            try:
+                return d.reference(callsign)
+            except GeoRefError, e:
+                log.warning("%r failed" % d, exc_info=True)
+        else:
+            raise GeoRefFail(callsign)
+
     def georeference(self, sess, ctydat):
+        drivers = self.drivers = []
+        sess and drivers.append(QrzReferencer(sess))
+        ctydat and drivers.append(CtyDatReferencer(ctydat))
+
+        if not drivers:
+            raise Exception("No georef drivers")
+
         try:
-            rec = sess.qrz(self.callsign)
-            if None in (rec['lat'], rec['lon']):
-                raise NullLoc()
-            self.lat, self.lon = rec['lat'], rec['lon']
-            log.debug("qrz rec %s" % rec)
-        except NullLoc:
-            log.warning("QRZ lookup failed for %s, no location data" % self.callsign)
-            raise
-        except qrz.NotFound, e:
-            log.warning("QRZ lookup failed for %s, not found" % self.callsign)
-            raise
-        except Exception, e:
-            log.warning("QRZ lookup failed for %s" % self.callsign, exc_info=True)
-            raise
+            self.lon, self.lat = self._georef(self.callsign)
+        except GeoRefFail:
+            raise OperatorGeoRefFail("Failed to georeference operator callsign", self.callsign)
 
         for qso in self.qsos:
-            qso['lat'], qso['lon'] = None, None
             try:
-                rec = sess.qrz(qso['call'])
-                log.debug("qrz rec %s" % rec)
-                if rec['call'] != qso['call']:
-                    log.warning("qrz %s != %s" % (rec['call'],
-                                    qso['call']))
-                if None in (rec['lat'], rec['lon']):
-                    raise NullLoc()
-                qso['lat'], qso['lon'] = rec['lat'], rec['lon']
-            except Exception, e:
-                if isinstance(e, qrz.NotFound):
-                    log.warning("QRZ lookup failed for %s, not found" % qso['call'])
-                elif isinstance(e, NullLoc):
-                    log.warning("QRZ lookup failed for %s, no location data" % qso['call'])
-                else:
-                    log.warning("QRZ lookup failed for %s" % qso['call'], exc_info=True)
-                try:
-                    dxcc = ctydat.getdxcc(qso['call'])
-                    qso['lat'] = float(dxcc['lat'])
-                    qso['lon'] = float(dxcc['lon']) * -1
-                except Exception:
-                    log.warning("cty.dat lookup failed for %s" % qso['call'], exc_info=True)
+                qso['lon'], qso['lat']  = self._georef(qso['call'])
+            except GeoRefFail:
+                log.warning("Failed to georef call", qso['call'])
 
     def geojson_dumps(self, *args, **kwargs):
         pointsFC, linesFC = self.geojson()
@@ -142,7 +172,7 @@ class Log(object):
         lines = []
         for qso in self.qsos:
             point, line = None, None
-            coords = qso['lon'], qso['lat']
+            coords = qso.get('lon', None), qso.get('lat', None)
             if None not in coords:
                 point = gj.Point(coords)
                 line = gj.LineString([

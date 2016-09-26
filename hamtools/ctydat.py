@@ -29,8 +29,8 @@ import re
 import pdb
 
 
-class InvalidDxcc(Exception):
-    pass
+class InvalidDxcc(Exception): pass
+class InvalidCallsign(Exception): pass
 
 
 class CtyDat(object):
@@ -70,7 +70,7 @@ class CtyDat(object):
                 a = None
 
         if b.isdigit():
-            raise Exception("invalid callsign %s" % call)
+            raise InvalidCallsign(call)
 
         if a is None and c is None:
             if re.search('\d', b) is not None:
