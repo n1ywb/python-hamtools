@@ -25,7 +25,7 @@ import logging
 
 log = logging.getLogger('qrz')
 
-CACHEPATH = os.path.join(os.environ['HOME'], '.qrz_cache')
+CACHEPATH = os.path.join(os.environ.get('XDG_CACHE_HOME', os.environ['HOME']), '.qrz_cache')
 
 testSessionXML = """\
 <?xml version="1.0" ?> 
@@ -59,16 +59,18 @@ class Callsign(object):
         return value
 
 class Session(object):
-    def __init__(self, user, passwd, cachepath=CACHEPATH):
+    def __init__(self, user=None, passwd=None, cachepath=CACHEPATH, key=None):
         # post http://xml.qrz.com/xml?username=user;password=passwdo
         # self.key = minidom parse key
         # check for alert or error
-        xml = self.request(dict(username=user, password=passwd))
-        log.debug(xml)
-        dom = minidom.parseString(xml)
-        session = dom.getElementsByTagName("Session")[0]
-        self.checkErr(session)
-        self.key = session.getElementsByTagName("Key")[0].firstChild.data
+        if not key:
+            xml = self.request(dict(username=user, password=passwd))
+            log.debug(xml)
+            dom = minidom.parseString(xml)
+            session = dom.getElementsByTagName("Session")[0]
+            self.checkErr(session)
+            key = session.getElementsByTagName("Key")[0].firstChild.data
+        self.key = key
         self.db = sqlite3.connect(cachepath)
         self.db.text_factory = str
         try:
