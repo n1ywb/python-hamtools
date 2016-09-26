@@ -74,6 +74,7 @@ class Log(object):
 
     @staticmethod
     def from_adif(logfile):
+        # TODO check for invalid ADIF file
         self = Log()
         log = adif.Reader(logfile)
         for qso in log:
@@ -126,25 +127,35 @@ class Log(object):
                     qso['lon'] = float(dxcc['lon']) * -1
                 except Exception:
                     log.warning("cty.dat lookup failed for %s" % qso['call'], exc_info=True)
-                    raise
 
     def geojson_dumps(self, *args, **kwargs):
+        pointsFC, linesFC = self.geojson()
+
+        strings = (
+            gj.dumps(pointsFC, *args, **kwargs),
+            gj.dumps(linesFC, *args, **kwargs),
+        )
+        return strings
+
+    def geojson(self):
         points = []
         lines = []
         for qso in self.qsos:
-            point = gj.Point((qso['lon'], qso['lat']))
+            point, line = None, None
+            coords = qso['lon'], qso['lat']
+            if None not in coords:
+                point = gj.Point(coords)
+                line = gj.LineString([
+                    (self.lon, self.lat),
+                    coords
+                ])
             points.append(gj.Feature(geometry=point,
-                                 properties=qso))
-            line = gj.LineString([
-                        (self.lon, self.lat),
-                        (qso['lon'], qso['lat'])
-            ])
+                                     properties=qso))
             lines.append(gj.Feature(geometry=line,
-                                 properties=qso))
-        return (
-            gj.dumps(gj.FeatureCollection(points), *args, **kwargs),
-            gj.dumps(gj.FeatureCollection(lines), *args, **kwargs),
-        )
+                                    properties=qso))
+        pointsFC = gj.FeatureCollection(points)
+        linesFC = gj.FeatureCollection(lines)
+        return pointsFC, linesFC
 
     def write_kml(self, file):
         dom = kml.KML()
