@@ -138,7 +138,7 @@ class Session(object):
                 self.db.commit();
             callnode = dom.getElementsByTagName("Callsign")[0]
             data = Callsign(callnode)
-            if data['call'] != callsign:
+            if data['call'].lower() != callsign.lower():
                 raise Exception("qrz callsign mismatch")
             return data
         except Exception:
