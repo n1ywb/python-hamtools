@@ -46,6 +46,9 @@ class NotFound(QrzError):
 class CallMismatch(QrzError):
     pass
 
+class QrzRequestError(QrzError):
+    pass
+
 class Callsign(object):
     conversions = dict(
         lat=float,
@@ -98,7 +101,7 @@ class Session(object):
         hc.request("POST", "/xml", urllib.urlencode(params), headers)
         resp = hc.getresponse()
         if resp.status != httplib.OK:
-            raise Exception("Status %d" % resp.status)
+            raise QrzRequestError("Status %d" % resp.status)
         return resp.read()
 
 
