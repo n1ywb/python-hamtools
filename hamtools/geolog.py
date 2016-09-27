@@ -32,7 +32,8 @@ import requests
 import requests_cache
 
 
-log = logging.getLogger('geolog')
+log = logging.getLogger(__name__)
+
 # log.setLevel(logging.INFO)
 
 # 1. Load log
@@ -277,8 +278,6 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv
 
-    logging.basicConfig(level=logging.INFO)
-
     parser = argparse.ArgumentParser(
         description=
         """Read ham log and output GIS data for callsigns worked. Output files will be
@@ -333,4 +332,5 @@ created: "foo/bar_points.geojson", "foo/bar_lines.geojson", and "foo/bar.kml"
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     sys.exit(main())

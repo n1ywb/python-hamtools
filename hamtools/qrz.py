@@ -23,7 +23,7 @@ import os
 import sqlite3
 import logging
 
-log = logging.getLogger('qrz')
+log = logging.getLogger(__name__)
 
 CACHEPATH = os.path.join(os.environ.get('XDG_CACHE_HOME', os.environ['HOME']), '.qrz_cache')
 
