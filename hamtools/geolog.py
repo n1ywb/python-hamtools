@@ -60,6 +60,7 @@ class QrzReferencer(object):
     def __init__(self, session):
         self.session = session
 
+    ## TODO memoize and cache
     def reference(self, callsign):
         """Returns lon, lat from QRZ"""
         try:
@@ -84,7 +85,7 @@ class CtyDatReferencer(object):
         try:
             dxcc = self.ctydat.getdxcc(callsign)
         except (InvalidDxcc, InvalidCallsign):
-            raise GeoRefError()
+            raise GeoRefError(callsign)
         lat = float(dxcc['lat'])
         lon = float(dxcc['lon']) * -1
         return lon, lat
@@ -135,7 +136,7 @@ class Log(object):
             try:
                 return d.reference(callsign)
             except GeoRefError, e:
-                log.warning("%r failed" % d, exc_info=True)
+                log.warning("%r failed on call %s", d, callsign)
         else:
             raise GeoRefFail(callsign)
 
@@ -156,7 +157,7 @@ class Log(object):
             try:
                 qso['lon'], qso['lat']  = self._georef(qso['call'])
             except GeoRefFail:
-                log.warning("Failed to georef call", qso['call'])
+                log.warning("Failed to georef call %s", qso['call'])
 
     def geojson_dumps(self, *args, **kwargs):
         pointsFC, linesFC = self.geojson()
