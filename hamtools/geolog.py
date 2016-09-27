@@ -91,17 +91,17 @@ class CtyDatReferencer(object):
         return lon, lat
 
 
-from hamtools.ushams import ushams
-from hamtools.ziplocs import ziplocs
-
-class FCCReferencer(object):
-    def reference(self, callsign):
-        try:
-            zip = ushams[callsign][:5]
-            lat, lon = ziplocs[zip]
-        except KeyError:
-            raise NotFound(callsign)
-        return lon, lat
+# from hamtools.ushams import ushams
+# from hamtools.ziplocs import ziplocs
+#
+# class FCCReferencer(object):
+#     def reference(self, callsign):
+#         try:
+#             zip = ushams[callsign][:5]
+#             lat, lon = ziplocs[zip]
+#         except KeyError:
+#             raise NotFound(callsign)
+#         return lon, lat
 
 
 class Log(object):
@@ -154,7 +154,7 @@ class Log(object):
     def georeference(self, sess, ctydat):
         drivers = self.drivers = []
         sess and drivers.append(QrzReferencer(sess))
-        drivers.append(FCCReferencer())
+        # drivers.append(FCCReferencer())
         ctydat and drivers.append(CtyDatReferencer(ctydat))
 
         if not drivers:
