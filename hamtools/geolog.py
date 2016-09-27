@@ -71,7 +71,7 @@ class QrzReferencer(object):
             log.debug("qrz rec %s" % rec)
         except qrz.NotFound, e:
             raise NotFound(callsign)
-        except qrz.CallMismatch, e:
+        except qrz.QrzError, e:
             raise GeoRefError(*e.args)
         return lon, lat
 
