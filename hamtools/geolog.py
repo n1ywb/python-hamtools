@@ -205,15 +205,12 @@ class Log(object):
                 log.warning("Failed to georef call %s", qso['call'])
 
     def geojson_dumps(self, *args, **kwargs):
-        pointsFC, linesFC = self.geojson()
-
-        strings = (
-            gj.dumps(pointsFC, *args, **kwargs),
-            gj.dumps(linesFC, *args, **kwargs),
-        )
-        return strings
+        qth, pointsFC, linesFC = self.geojson()
+        r = dict(qth=qth, pointsFC=pointsFC, linesFC=linesFC)
+        return gj.dumps(r)
 
     def geojson(self):
+        qth = gj.Feature(geometry=gj.Point((self.lon, self.lat)))
         points = []
         lines = []
         for qso in self.qsos:
@@ -231,7 +228,7 @@ class Log(object):
                                     properties=qso))
         pointsFC = gj.FeatureCollection(points)
         linesFC = gj.FeatureCollection(lines)
-        return pointsFC, linesFC
+        return qth, pointsFC, linesFC
 
     def write_kml(self, file):
         dom = kml.KML()
