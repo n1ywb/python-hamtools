@@ -97,7 +97,6 @@ class Session(object):
         hc = httplib.HTTPConnection("xml.qrz.com")
         headers = {"Content-type": "application/x-www-form-urlencoded",
             "Accept": "text/plain"}
-
         hc.request("POST", "/xml", urllib.urlencode(params), headers)
         resp = hc.getresponse()
         if resp.status != httplib.OK:

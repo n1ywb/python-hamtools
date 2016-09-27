@@ -22,18 +22,18 @@ import logging
 import os
 import sys
 import traceback
-
 from pkg_resources import resource_stream
-
 import geojson as gj
+from hamtools import adif
+from hamtools.ctydat import CtyDat, InvalidDxcc, InvalidCallsign
+from hamtools import kml
+from hamtools import qrz
+import requests
+import requests_cache
 
-import adif
-from ctydat import CtyDat, InvalidDxcc, InvalidCallsign
-import kml
-import qrz
 
 log = logging.getLogger('geolog')
-#log.setLevel(logging.INFO)
+# log.setLevel(logging.INFO)
 
 # 1. Load log
 # 2. Georeference log
@@ -41,18 +41,24 @@ log = logging.getLogger('geolog')
 # 4. Output GeoJSON
 
 CABRILLO_FIELDS = ['header', 'freq', 'mode', 'date', 'time',
-    'from_call', 'sent_rst', 'sent_ex', 'call', 'receved_rst',
-    'received_ex']
+                   'from_call', 'sent_rst', 'sent_ex', 'call', 'receved_rst',
+                   'received_ex']
 
 CACHEPATH = os.path.join(os.environ['HOME'], '.qrz_cache')
 
 
 class OperatorGeoRefFail(Exception): pass
 
+
 class GeoRefFail(Exception): pass
 
+
 class GeoRefError(Exception): pass
+
+
 class NullLoc(GeoRefError): pass
+
+
 class NotFound(GeoRefError): pass
 
 
@@ -91,17 +97,27 @@ class CtyDatReferencer(object):
         return lon, lat
 
 
-# from hamtools.ushams import ushams
-# from hamtools.ziplocs import ziplocs
-#
-# class FCCReferencer(object):
-#     def reference(self, callsign):
-#         try:
-#             zip = ushams[callsign][:5]
-#             lat, lon = ziplocs[zip]
-#         except KeyError:
-#             raise NotFound(callsign)
-#         return lon, lat
+class FCCReferencer(object):
+    PREFIXES = list('aknw')
+    CACHEPATH = os.path.join(os.environ.get('XDG_CACHE_HOME', os.environ['HOME']), '.callook_cache')
+    requests_cache.install_cache(CACHEPATH)
+    def reference(self, callsign):
+        if callsign[0].lower() not in self.PREFIXES:
+            raise NotFound(callsign)
+        r = requests.get("https://callook.info/%s/json" % callsign)
+        if r.status_code == 404:
+            raise NotFound(callsign)
+        if r.status_code != 200:
+            raise GeoRefError(r.status_code)
+        try:
+            data = r.json()
+        except ValueError:
+            raise GeoRefError('bad json')
+        if data['status'] != 'VALID':
+            raise GeoRefError('invalid')
+        lon = float(data['location']['longitude'])
+        lat = float(data['location']['latitude'])
+        return lon, lat
 
 
 class Log(object):
@@ -134,10 +150,14 @@ class Log(object):
         self = Log()
         log = adif.Reader(logfile)
         for qso in log:
-            try: del qso['app_datetime_on']
-            except KeyError: pass
-            try: del qso['app_datetime_off']
-            except KeyError: pass
+            try:
+                del qso['app_datetime_on']
+            except KeyError:
+                pass
+            try:
+                del qso['app_datetime_off']
+            except KeyError:
+                pass
             self.qsos.append(qso)
         self.callsign = qso['operator']
         return self
@@ -147,14 +167,14 @@ class Log(object):
             try:
                 return d.reference(callsign)
             except GeoRefError, e:
-                log.warning("%r failed on call %s", d, callsign)
+                log.warning("%r failed on call %s: %s", d, callsign, e)
         else:
             raise GeoRefFail(callsign)
 
     def georeference(self, sess, ctydat):
         drivers = self.drivers = []
         sess and drivers.append(QrzReferencer(sess))
-        # drivers.append(FCCReferencer())
+        drivers.append(FCCReferencer())
         ctydat and drivers.append(CtyDatReferencer(ctydat))
 
         if not drivers:
@@ -167,7 +187,7 @@ class Log(object):
 
         for qso in self.qsos:
             try:
-                qso['lon'], qso['lat']  = self._georef(qso['call'])
+                qso['lon'], qso['lat'] = self._georef(qso['call'])
             except GeoRefFail:
                 log.warning("Failed to georef call %s", qso['call'])
 
@@ -221,6 +241,7 @@ class Log(object):
             folder.appendChild(callnode)
         dom.writepretty(file)
 
+
 def geolog(logfilepath, outfile, username, password, cachepath, ctydatflo):
     with open(logfilepath) as logfile:
         line = logfile.next()
@@ -260,18 +281,18 @@ def main(argv=None):
 
     parser = argparse.ArgumentParser(
         description=
-"""Read ham log and output GIS data for callsigns worked. Output files will be
+        """Read ham log and output GIS data for callsigns worked. Output files will be
 prefixed with output path. E.g. given "foo/bar", the following files will be
 created: "foo/bar_points.geojson", "foo/bar_lines.geojson", and "foo/bar.kml"
 """)
     parser.add_argument('infile', type=str,
-        help='Input log file (ADIF or Cabrillo)')
+                        help='Input log file (ADIF or Cabrillo)')
     parser.add_argument('outpath', type=str,
-        help='Output path prefix')
+                        help='Output path prefix')
     parser.add_argument('-c', '--cfg', type=str,
-        help='Config file path', default=os.path.join(os.environ['HOME'], '.geologrc'))
+                        help='Config file path', default=os.path.join(os.environ['HOME'], '.geologrc'))
     parser.add_argument('-v', '--verbose', type=bool,
-        help='Turn on additional output', default=False)
+                        help='Turn on additional output', default=False)
     args = parser.parse_args(argv[1:])
 
     cfg = ConfigParser.SafeConfigParser()
@@ -313,4 +334,3 @@ created: "foo/bar_points.geojson", "foo/bar_lines.geojson", and "foo/bar.kml"
 
 if __name__ == "__main__":
     sys.exit(main())
-

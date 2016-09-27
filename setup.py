@@ -12,7 +12,7 @@ setup(
     packages = ['hamtools'],
     package_data={'hamtools': ['ctydat/cty.dat']},
     scripts = ['geolog', 'vk'],
-    install_requires = ['geojson'],
+    install_requires = ['geojson', 'requests', 'requests-cache'],
     long_description = (
 """Collection of amateur radio tools. Includes ability to read ADIF and
 Cabrillo log files, cty.dat files, georeference callsigns via QRZ.com and
