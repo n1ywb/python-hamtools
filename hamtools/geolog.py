@@ -117,7 +117,7 @@ class FCCReferencer(object):
         if data['status'] != 'VALID':
             raise GeoRefError('invalid')
         raw_lon = data['location']['longitude']
-        raw_lat = float(data['location']['latitude'])
+        raw_lat = data['location']['latitude']
         if not raw_lon or not raw_lat:
             raise GeoRefError("No location data")
         try:
