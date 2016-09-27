@@ -116,6 +116,10 @@ class FCCReferencer(object):
             raise GeoRefError('bad json')
         if data['status'] != 'VALID':
             raise GeoRefError('invalid')
+        raw_lon = data['location']['longitude']
+        raw_lat = float(data['location']['latitude'])
+        if not raw_lon or not raw_lat:
+            raise GeoRefError("No location data")
         try:
             lon = float(data['location']['longitude'])
             lat = float(data['location']['latitude'])
