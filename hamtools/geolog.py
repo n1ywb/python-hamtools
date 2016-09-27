@@ -168,7 +168,8 @@ class Log(object):
             except KeyError:
                 pass
             self.qsos.append(qso)
-        self.callsign = qso['operator']
+        if self.qsos:
+            self.callsign = qso.get('operator', None)
         return self
 
     def _georef(self, callsign):
@@ -188,6 +189,9 @@ class Log(object):
 
         if not drivers:
             raise Exception("No georef drivers")
+
+        if not self.callsign:
+            raise OperatorGeoRefFail("Unable to determine op callsign from log")
 
         try:
             self.lon, self.lat = self._georef(self.callsign)
