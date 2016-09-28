@@ -144,7 +144,12 @@ class Log(object):
                 # floats, which makes them JSON ints, which QGIS won't allow to
                 # use for a graduated scale.
                 qso['time'] = float(qso['time'] + '.000000001')
-                qso['freq'] = float(qso['freq'] + '.000000001')
+                try:
+                    freq = float(qso['freq']) + 0.00000001
+                except ValueError:
+                    pass
+                else:
+                    qso['freq'] = freq
                 self.qsos.append(qso)
                 log.debug(qso)
             elif line.startswith("CALLSIGN:"):
