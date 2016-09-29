@@ -69,7 +69,7 @@ class Reader(object):
             self.header_present = True
             for field in self._lex(blocksize=1):
                 if field.name == 'adif_ver':
-                    self.adif_ver = Decimal(field.body)
+                    self.adif_ver = field.body
                 elif field.name == 'eoh':
                     break
         self.bookmark = flo.tell()

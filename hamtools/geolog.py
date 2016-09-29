@@ -174,7 +174,10 @@ class Log(object):
                 pass
             self.qsos.append(qso)
         if self.qsos:
-            self.callsign = qso.get('operator', None)
+            qso = self.qsos[0]
+            self.callsign = qso.get('station_callsign', None)
+            if not self.callsign:
+                self.callsign = qso.get('operator', None)
         return self
 
     def _georef(self, callsign):
