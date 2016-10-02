@@ -56,11 +56,12 @@ class CtyDat(object):
 
     def getwpx(self, call):
         prefix = None
-        a,b,c = None, None, None
-        fields = call.split('/')
-        try: a,b,c = fields
+        a, b, c = None, None, None
+        fields = re.split('/+', call)
+        try:
+            a, b, c = fields
         except Exception:
-            try: a,b = fields
+            try: a, b = fields
             except Exception:
                 a = fields
 
